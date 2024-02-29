@@ -2,21 +2,36 @@
 
 import java.awt.EventQueue;
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 
+import model.Entrada;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.view.JasperViewer;
+
 public class Servidor {
 	
 	private ReentrantLock lock = new ReentrantLock();
+	private final int MAX_NUMBER_OF_TICKETS = 10;
 	private int entradas1 = 10;
 	private int entradas2 = 10;
 	private int entradas3 = 10;
@@ -25,7 +40,7 @@ public class Servidor {
 	private JLabel lblEntradas2;
 	private JLabel lblEntradas3;
 
-	private JFrame frame;
+	private JFrame root;
 
 	/**
 	 * Launch the application.
@@ -35,7 +50,7 @@ public class Servidor {
 			public void run() {
 				try {
 					Servidor window = new Servidor();
-					window.frame.setVisible(true);
+					window.root.setVisible(true);
 					
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -58,26 +73,100 @@ public class Servidor {
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
-		frame = new JFrame();
-		frame.setBounds(100, 100, 450, 300);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.getContentPane().setLayout(null);
+		root = new JFrame();
+		root.setBounds(100, 100, 450, 300);
+		root.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		root.getContentPane().setLayout(null);
 		
 		lblEntradas1 = new JLabel("Entradas Normales: " + entradas1);
 		lblEntradas1.setFont(new Font("Tahoma", Font.PLAIN, 14));
 		lblEntradas1.setBounds(33, 26, 183, 13);
-		frame.getContentPane().add(lblEntradas1);
+		root.getContentPane().add(lblEntradas1);
 		
 		lblEntradas2 = new JLabel("Entradas Medias: " + entradas2);
 		lblEntradas2.setFont(new Font("Tahoma", Font.PLAIN, 14));
 		lblEntradas2.setBounds(33, 62, 183, 13);
-		frame.getContentPane().add(lblEntradas2);
+		root.getContentPane().add(lblEntradas2);
 		
 		lblEntradas3 = new JLabel("Entradas VIP: " + entradas3);
 		lblEntradas3.setFont(new Font("Tahoma", Font.PLAIN, 14));
 		lblEntradas3.setBounds(33, 102, 162, 13);
-		frame.getContentPane().add(lblEntradas3);
+		root.getContentPane().add(lblEntradas3);
+		
+		JButton btnIngresos = new JButton("Ver Ingresos");
+		btnIngresos.setBounds(157, 190, 129, 21);
+		root.getContentPane().add(btnIngresos);
+		
+		btnIngresos.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if(!hayEntradasCompradas()) {
+					
+				}else {
+					ArrayList<Entrada> cantidadEntradas = generarEntradasCompradas();
+					Map<String, Object> parametros = new HashMap<String, Object>();
+					parametros.forEach((key, value)->{
+						System.out.println(key + " " + value);
+					});
+					parametros.put("TotalRecaudado", String.valueOf(getAllProfit()));
+					DataSource datasource = new DataSource(cantidadEntradas);
+					
+					try {
+						JasperReport jasperReport = JasperCompileManager.compileReport("src/jasperfiles/BuenosDineros.jrxml");
+						JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parametros, datasource);
+						
+						JasperViewer.viewReport(jasperPrint);
+					} catch (JRException e1) {
+						e1.printStackTrace();
+					}
+				}
+
+			}
+		});
+		
 	}
+	protected double getAllProfit() {
+		double totalRecaudado = 0;
+		if(entradas1!=10) {
+			totalRecaudado += (MAX_NUMBER_OF_TICKETS - entradas1)*10;
+		}
+		
+		if(entradas2!=10) {
+			totalRecaudado += (MAX_NUMBER_OF_TICKETS - entradas2)*20;
+		}
+		
+		if(entradas3!=10) {
+			totalRecaudado += (MAX_NUMBER_OF_TICKETS - entradas3)*30;
+		}
+		return totalRecaudado;
+	}
+
+	private boolean hayEntradasCompradas() {
+		boolean hayEntradasCompradas = false;
+		
+		if(entradas1!= MAX_NUMBER_OF_TICKETS || entradas2!= MAX_NUMBER_OF_TICKETS || entradas3!= MAX_NUMBER_OF_TICKETS) {
+			hayEntradasCompradas = true;
+		}
+		
+		return hayEntradasCompradas;
+	}
+
+	private ArrayList<Entrada> generarEntradasCompradas() {
+		ArrayList<Entrada> cantidadEntradas = new ArrayList<>();
+		if(entradas1!=10) {
+			cantidadEntradas.add(new Entrada("Entrada Barata", String.valueOf(MAX_NUMBER_OF_TICKETS - entradas1)));
+		}
+		
+		if(entradas2!=10) {
+			cantidadEntradas.add(new Entrada("Entrada Media", String.valueOf(MAX_NUMBER_OF_TICKETS - entradas2)));
+		}
+		
+		if(entradas3!=10) {
+			cantidadEntradas.add(new Entrada("Entrada Vip", String.valueOf(MAX_NUMBER_OF_TICKETS - entradas3)));
+		}
+		
+		return cantidadEntradas;
+	}
+
 	private void startServer() {
 		String entradaCliente;
 		try(ServerSocket server = new ServerSocket(1234)){
@@ -110,7 +199,6 @@ public class Servidor {
 			
 			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		

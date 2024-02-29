@@ -9,6 +9,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -18,8 +20,18 @@ import javax.swing.JProgressBar;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
-public class Cliente {
+import net.sf.jasperreports.engine.JREmptyDataSource;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.view.JasperViewer;
 
+public class Cliente {
+	
+	public static final String PATH_TO_JASPERT_FILE = "C:\\Users\\dcues\\JaspersoftWorkspace\\Reportes\\EntradaConcierto.jrxml";
+	
 	private JFrame root;
 	private JLabel lblEntradas1;
 	private JLabel lblEntradas2;
@@ -32,9 +44,6 @@ public class Cliente {
 	private boolean estaReservando = false;
 	private final int MAX_SECONDS_TO_WAIT = 10;
 
-	/**
-	 * Launch the application.
-	 */
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
@@ -193,7 +202,6 @@ public class Cliente {
 
 	private boolean validarTickets() {
 		updateTickets();
-		// TODO que no se puedan comprar mas de 3 y que haya alguna introducida
 		boolean cantidadEntradasValidas = true;
 		int[] newTickets = getUpdatedTickets();
 		try {
@@ -307,12 +315,25 @@ public class Cliente {
 				os.write((txtEntradas3.getText() + "\n").getBytes());
 				os.flush();
 				updateTickets();
+				
+				//si no ha habido ningún error genero el pdf
+				Map<String, Object> parametros = new HashMap<String, Object>();
+				parametros.put("entradasNormales", txtEntradas1.getText());
+				parametros.put("entradasMedias", txtEntradas2.getText());
+				parametros.put("entradasVip", txtEntradas3.getText());
+				
+				try {
+					JasperReport jasperReport = JasperCompileManager.compileReport("src/jasperfiles/EntradaConcierto.jrxml");
+					JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parametros, new JREmptyDataSource());
+					JasperViewer.viewReport(jasperPrint);
+				} catch (JRException e1) {
+					JOptionPane.showMessageDialog(root, "Se ha producido un error generando el pdf");
+					e1.printStackTrace();
+				}
 
 			} catch (UnknownHostException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 		}
